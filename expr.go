@@ -108,7 +108,6 @@ func (e *ConcatenationExpr) Evaluate(context []yaml.Map, stub yaml.Node) yaml.No
 
 	ascalar, ok := scalarFrom(a)
 	if !ok {
-		fmt.Printf("NOT SCALAR: %#v\n", a)
 		return nil
 	}
 
@@ -126,7 +125,6 @@ func (e *AdditionExpr) Evaluate(context []yaml.Map, stub yaml.Node) yaml.Node {
 
 	ascalar, ok := scalarFrom(a)
 	if !ok {
-		fmt.Printf("NOT SCALAR: %#v\n", a)
 		return nil
 	}
 
@@ -154,7 +152,6 @@ func (e *SubtractionExpr) Evaluate(context []yaml.Map, stub yaml.Node) yaml.Node
 
 	ascalar, ok := scalarFrom(a)
 	if !ok {
-		fmt.Printf("NOT SCALAR: %#v\n", a)
 		return nil
 	}
 

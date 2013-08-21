@@ -33,5 +33,10 @@ func main() {
 	for didFlow := true; didFlow; flowed, didFlow = spice.Flow(flowed) {
 	}
 
+	err = posh.CheckResolved(flowed)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
 	fmt.Println(yaml.Render(flowed))
 }

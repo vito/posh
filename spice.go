@@ -2,6 +2,7 @@ package posh
 
 import (
 	"container/list"
+	"errors"
 	"fmt"
 	"log" // TODO: no
 	"regexp"
@@ -32,6 +33,38 @@ type PoshNode struct {
 
 func (s *Spice) Flow(root yaml.Node) (yaml.Node, bool) {
 	return s.flow(root, []string{}, []yaml.Map{})
+}
+
+func CheckResolved(root yaml.Node) error {
+	switch root.(type) {
+	case yaml.Map:
+		for _, val := range map[string]yaml.Node(root.(yaml.Map)) {
+			err := CheckResolved(val)
+			if err != nil {
+				return err
+			}
+		}
+
+	case yaml.List:
+		for _, val := range []yaml.Node(root.(yaml.List)) {
+			err := CheckResolved(val)
+			if err != nil {
+				return err
+			}
+		}
+
+	case yaml.Scalar:
+
+	case *PoshNode:
+		posh := root.(*PoshNode)
+
+		return errors.New(fmt.Sprintf("could not resolve: %#v\n", posh.Expression))
+
+	default:
+		panic("unknown node type")
+	}
+
+	return nil
 }
 
 func (s *Spice) flow(root yaml.Node, path []string, context []yaml.Map) (yaml.Node, bool) {
@@ -174,8 +207,6 @@ func compileTokens(posh *Posh, path []string, context []yaml.Map) yaml.Node {
 			expr := exprStack.Pop()
 
 			return &PoshNode{
-				Node: yaml.Scalar(fmt.Sprintf("TODO UNRESOLVED: %#v\n", expr)),
-
 				Expression: expr,
 
 				path:    path,
