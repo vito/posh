@@ -220,7 +220,7 @@ properties:
   cc_api_version: v2
 
   cc:
-    srv_api_uri: {{ merge || "https://api." + domain }}
+    srv_api_uri: {{ merge || "https://api." domain }}
     external_host: ccng
     logging_level: debug
     bulk_api_password: {{ merge }}
@@ -230,7 +230,7 @@ properties:
     max_staging_runtime: 900
     resource_pool:
       minimum_size: 65536
-      resource_directory_key: {{ merge || (domain + "-cc-resources") }}
+      resource_directory_key: {{ merge || domain "-cc-resources" }}
       fog_connection:
         provider: AWS
         aws_access_key_id: {{ properties.template_only.aws.access_key_id }}
@@ -241,7 +241,7 @@ properties:
         private_key: {{ merge || "" }}
     packages:
       minimum_size: 1048576
-      app_package_directory_key: {{ merge || (domain + "-cc-packages") }}
+      app_package_directory_key: {{ merge || domain "-cc-packages" }}
       fog_connection:
         provider: AWS
         aws_access_key_id: {{ properties.template_only.aws.access_key_id }}
@@ -252,7 +252,7 @@ properties:
         private_key: {{ merge || "" }}
     droplets:
       minimum_size: 1048576
-      droplet_directory_key: {{ merge || (domain + "-cc-droplets") }}
+      droplet_directory_key: {{ merge || domain "-cc-droplets" }}
       fog_connection:
         provider: AWS
         aws_access_key_id: {{ properties.template_only.aws.access_key_id }}
@@ -311,8 +311,8 @@ properties:
     relay_host_port: {{ merge || 0 }}
     log_email:
       enabled: true
-      from_email: {{ merge }}
-      from_password: {{ merge }}
+      from_email: {{ merge || "" }}
+      from_password: {{ merge || "" }}
       to_email:
         - cfpi-backend@googlegroups.com
         - cfpi-services@googlegroups.com
@@ -329,13 +329,13 @@ properties:
   login:
     protocol: https
     links:
-      home: {{ merge || ("https://console." + domain) }}
-      passwd: {{ merge || ("https://console." + domain + "/password_resets/new") }}
-      signup: {{ merge || ("https://console." + domain + "/register") }}
+      home: {{ merge || "https://console." domain }}
+      passwd: {{ merge || "https://console." domain "/password_resets/new" }}
+      signup: {{ merge || "https://console." domain "/register" }}
 
   uaa:
     catalina_opts: -Xmx768m -XX:MaxPermSize=256m
-    url: {{ "https://uaa." + domain }}
+    url: {{ "https://uaa." domain }}
     resource_id: account_manager
     no_ssl: false
     jwt:
@@ -364,7 +364,7 @@ properties:
         authorities: oauth.login
         secret: {{ merge }}
         authorized-grant-types: authorization_code,client_credentials,refresh_token
-        redirect-uri: {{ "https://login." + domain }}
+        redirect-uri: {{ "https://login." domain }}
       portal:
         override: true
         scope: openid,cloud_controller.read,cloud_controller.write,password.write
@@ -393,7 +393,7 @@ properties:
         scope: scim.write,scim.read,openid,cloud_controller.read,cloud_controller.write
         secret: {{ merge }}
         authorized-grant-types: authorization_code,client_credentials
-        redirect-uri: {{ "http://support-signon." + domain }}
+        redirect-uri: {{ "http://support-signon." domain }}
         authorities: portal.users.read
         access-token-validity: 1209600
         refresh-token-validity: 1209600
@@ -412,7 +412,7 @@ properties:
         scope: openid,cloud_controller.read,cloud_controller.write
         authorities: uaa.resource,oauth.service,clients.read,clients.write,clients.secret
         authorized-grant-types: authorization_code,client_credentials,password,implicit
-        redirect-uri: {{ "http://servicesmgmt." + domain + "/auth/cloudfoundry/callback" }}
+        redirect-uri: {{ "http://servicesmgmt." domain "/auth/cloudfoundry/callback" }}
         override: true
         autoapprove: true
       space-mail:

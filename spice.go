@@ -202,6 +202,11 @@ func compileTokens(posh *Posh, path []string, context []yaml.Map) yaml.Node {
 			lhs := exprStack.Pop()
 
 			exprStack.Push(&OrExpr{A: lhs, B: rhs})
+		case RuleConcatenation:
+			rhs := exprStack.Pop()
+			lhs := exprStack.Pop()
+
+			exprStack.Push(&ConcatenationExpr{A: lhs, B: rhs})
 		case RuleAddition:
 			rhs := exprStack.Pop()
 			lhs := exprStack.Pop()

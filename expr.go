@@ -35,7 +35,11 @@ type OrExpr struct {
 	B Expression
 }
 
-// TODO:
+type ConcatenationExpr struct {
+	A Expression
+	B Expression
+}
+
 type AdditionExpr struct {
 	A Expression
 	B Expression
@@ -97,7 +101,7 @@ func (e *OrExpr) Evaluate(context []yaml.Map, stub yaml.Node) yaml.Node {
 	return e.B.Evaluate(context, stub)
 }
 
-func (e *AdditionExpr) Evaluate(context []yaml.Map, stub yaml.Node) yaml.Node {
+func (e *ConcatenationExpr) Evaluate(context []yaml.Map, stub yaml.Node) yaml.Node {
 	a := e.A.Evaluate(context, stub)
 	b := e.B.Evaluate(context, stub)
 
@@ -113,6 +117,10 @@ func (e *AdditionExpr) Evaluate(context []yaml.Map, stub yaml.Node) yaml.Node {
 	}
 
 	return yaml.Scalar(string(ascalar) + string(bscalar))
+}
+
+func (e *AdditionExpr) Evaluate(context []yaml.Map, stub yaml.Node) yaml.Node {
+	return yaml.Scalar("TODO Addition")
 }
 
 func (e *SubtractionExpr) Evaluate([]yaml.Map, yaml.Node) yaml.Node {
