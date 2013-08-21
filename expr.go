@@ -2,6 +2,7 @@ package posh
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/kylelemons/go-gypsy/yaml"
 )
@@ -120,11 +121,59 @@ func (e *ConcatenationExpr) Evaluate(context []yaml.Map, stub yaml.Node) yaml.No
 }
 
 func (e *AdditionExpr) Evaluate(context []yaml.Map, stub yaml.Node) yaml.Node {
-	return yaml.Scalar("TODO Addition")
+	a := e.A.Evaluate(context, stub)
+	b := e.B.Evaluate(context, stub)
+
+	ascalar, ok := scalarFrom(a)
+	if !ok {
+		fmt.Printf("NOT SCALAR: %#v\n", a)
+		return nil
+	}
+
+	bscalar, ok := scalarFrom(b)
+	if !ok {
+		return nil
+	}
+
+	aint, err := strconv.Atoi(string(ascalar))
+	if err != nil {
+		return nil
+	}
+
+	bint, err := strconv.Atoi(string(bscalar))
+	if err != nil {
+		return nil
+	}
+
+	return yaml.Scalar(fmt.Sprintf("%d", aint+bint))
 }
 
-func (e *SubtractionExpr) Evaluate([]yaml.Map, yaml.Node) yaml.Node {
-	return yaml.Scalar("TODO Subtraction")
+func (e *SubtractionExpr) Evaluate(context []yaml.Map, stub yaml.Node) yaml.Node {
+	a := e.A.Evaluate(context, stub)
+	b := e.B.Evaluate(context, stub)
+
+	ascalar, ok := scalarFrom(a)
+	if !ok {
+		fmt.Printf("NOT SCALAR: %#v\n", a)
+		return nil
+	}
+
+	bscalar, ok := scalarFrom(b)
+	if !ok {
+		return nil
+	}
+
+	aint, err := strconv.Atoi(string(ascalar))
+	if err != nil {
+		return nil
+	}
+
+	bint, err := strconv.Atoi(string(bscalar))
+	if err != nil {
+		return nil
+	}
+
+	return yaml.Scalar(fmt.Sprintf("%d", aint-bint))
 }
 
 func (e *SeqExpr) Evaluate([]yaml.Map, yaml.Node) yaml.Node {

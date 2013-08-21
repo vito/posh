@@ -1,12 +1,12 @@
 ec2_constants:
   memory:
-    m1_medium: 3_840
-    m1_large: 7_680
-    m2_2xlarge: 35_020
+    m1_medium: 3840
+    m1_large: 7680
+    m2_2xlarge: 35020
   disk:
-    m1_medium: 390_000
-    m1_large: 400_000
-    m2_2xlarge: 800_000
+    m1_medium: 390000
+    m1_large: 400000
+    m2_2xlarge: 800000
 
 name: {{ merge }}
 director_uuid: {{ merge }}
