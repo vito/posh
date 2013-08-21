@@ -1,0 +1,42 @@
+package posh
+
+type Posh Peg {
+}
+
+Posh <- Expression !.
+
+Expression <- Level2
+
+Level2 <- Or / Level1
+
+Or <- Level1 ws '||' ws Expression
+
+Level1 <- Addition / Subtraction / Level0
+
+Addition <- Level0 ws '+' ws Level1
+Subtraction <- Level0 ws '-' ws Level1
+
+Level0 <- Grouped / Call / String / Integer / List / Merge / Auto / Reference
+
+Grouped <- '(' Expression ')'
+
+Call <- Name '(' Arguments ')'
+Arguments <- Expression (Comma ws Expression)*
+Name <- [a-zA-Z0-9_]+
+
+Comma <- ','
+
+Integer <- [0-9_]+
+
+String <- '"' (!'"' .)* '"'
+
+List <- '[' Contents ']'
+Contents <- Expression (Comma ws Expression)*
+
+Merge <- 'merge'
+
+Auto <- 'auto'
+
+Reference <- [a-zA-Z0-9_]+ ('.' [a-zA-Z0-9_]+)*
+
+ws <- [ \t\n\r]*

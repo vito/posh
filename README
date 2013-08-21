@@ -1,0 +1,41 @@
+template system mockup:
+
+  {{ foo }}:
+    look for the nearest 'foo' key (i.e. lexical scoping) and bring it in
+
+  {{ foo.bar.baz }}:
+    look for the nearest 'foo' key and get attributes on it
+
+    if foo.bar is nil, return nil
+
+  {{ "foo" }}:
+    string literal
+
+  {{ "foo" + bar }}
+    string concatenation (where bar is another arbitrary expr)
+
+  {{ auto }}:
+    context-sensitive; in a resource pool's instances: this means calculate
+    based on the # of jobs declared in the pool
+
+  {{ merge }}:
+    bring the current path in from the template being diff'd against
+
+    e.g.:
+
+    foo:
+      bar:
+        baz: {{ merge }}
+
+    will bring in {{ foo.bar.baz }}
+
+    if the corresponding value is not defined, it will return nil
+
+  {{ a || b }}:
+    uses a or b if a is nil
+
+  {{ static_ips(N, "cf1.static") }}:
+    generate N static IPs in the cf1.static network, returning an array of
+    strings
+
+    see https://github.com/cloudfoundry/bosh/blob/a41407817b1d07e1f2523305c73ef5c53598d199/bosh_cli/lib/cli/commands/biff.rb#L239-L271
