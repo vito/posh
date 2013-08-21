@@ -72,8 +72,54 @@ type CallExpr struct {
 	Arguments []Expression
 }
 
-func (e *AutoExpr) Evaluate([]yaml.Map, yaml.Node) yaml.Node {
-	return yaml.Scalar("TODO Auto")
+func (e *AutoExpr) Evaluate(context []yaml.Map, stub yaml.Node) yaml.Node {
+	if len(e.Path) == 3 && e.Path[0] == "resource_pools" && e.Path[2] == "size" {
+		size := 0
+
+		jobs, found := resolveSymbol("jobs", context...)
+		if !found {
+			return nil
+		}
+
+		jobsList, ok := jobs.(yaml.List)
+		if !ok {
+			return nil
+		}
+
+		for _, job := range []yaml.Node(jobsList) {
+			attrs, ok := job.(yaml.Map)
+			if !ok {
+				continue
+			}
+
+			resourcePool := attrs.Key("resource_pool")
+			poolName, ok := resourcePool.(yaml.Scalar)
+			if !ok {
+				continue
+			}
+
+			if string(poolName) != e.Path[1] {
+				continue
+			}
+
+			instances := attrs.Key("instances")
+			instanceCount, ok := instances.(yaml.Scalar)
+			if !ok {
+				return nil
+			}
+
+			count, err := strconv.Atoi(string(instanceCount))
+			if err != nil {
+				return nil
+			}
+
+			size += count
+		}
+
+		return yaml.Scalar(fmt.Sprintf("%d", size))
+	}
+
+	return nil
 }
 
 func (e *MergeExpr) Evaluate(context []yaml.Map, stub yaml.Node) yaml.Node {

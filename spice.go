@@ -295,15 +295,3 @@ func compileTokens(posh *Posh, path []string, context []yaml.Map) yaml.Node {
 
 	panic("unreachable")
 }
-
-func autoFor(path []string) string {
-	if len(path) == 3 && path[0] == "resource_pools" && path[2] == "size" {
-		resourcePool := path[1]
-		return fmt.Sprintf(
-			`find("jobs").select { |attrs| attrs["resource_pool"] == %#v }.collect { |attrs| attrs["instances"] }.inject(&:+)`,
-			resourcePool,
-		)
-	}
-
-	return "UNKNOWN_AUTO"
-}
