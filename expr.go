@@ -23,6 +23,10 @@ type ReferenceExpr struct {
 	Path []string
 }
 
+type BooleanExpr struct {
+	Value bool
+}
+
 type IntegerExpr struct {
 	Value int
 }
@@ -83,6 +87,10 @@ func (e *ReferenceExpr) Evaluate(context []yaml.Map, stub yaml.Node) yaml.Node {
 	}
 
 	return findInPath(e.Path[1:], root)
+}
+
+func (e *BooleanExpr) Evaluate([]yaml.Map, yaml.Node) yaml.Node {
+	return yaml.Scalar(fmt.Sprintf("%v", e.Value))
 }
 
 func (e *IntegerExpr) Evaluate([]yaml.Map, yaml.Node) yaml.Node {

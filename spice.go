@@ -225,6 +225,8 @@ func compileTokens(posh *Posh, path []string, context []yaml.Map) yaml.Node {
 			}
 
 			exprStack.Push(&IntegerExpr{val})
+		case RuleBoolean:
+			exprStack.Push(&BooleanExpr{contents == "true"})
 		case RuleString:
 			// strip quotes (TODO: hack)
 			exprStack.Push(&StringExpr{contents[1 : len(contents)-1]})
