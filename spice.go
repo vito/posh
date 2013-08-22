@@ -8,75 +8,75 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-
-	"github.com/kylelemons/go-gypsy/yaml"
 )
 
-var embeddedPosh *regexp.Regexp = regexp.MustCompile(`{{\s*(.*?)\s*}}`)
+var embeddedPosh *regexp.Regexp = regexp.MustCompile(`\(\(\s*(.*?)\s*\)\)`)
 var pathName *regexp.Regexp = regexp.MustCompile("^[a-zA-Z0-9_]+$")
 
+type Context []map[string]Node
+
 type Spice struct {
-	Stub yaml.Node
+	Stub Node
 
 	path    []string
-	context []yaml.Map
+	context Context
 }
 
 type PoshNode struct {
-	yaml.Node
+	Node
 
 	Expression Expression
 
 	path    []string
-	context []yaml.Map
+	context Context
 }
 
-func (s *Spice) Flow(root yaml.Node) (yaml.Node, bool) {
-	return s.flow(root, []string{}, []yaml.Map{})
+func (s *Spice) Flow(root Node) (Node, bool) {
+	return s.flow(root, []string{}, []map[string]Node{})
 }
 
-func CheckResolved(root yaml.Node) error {
+func CheckResolved(root Node) error {
 	switch root.(type) {
-	case yaml.Map:
-		for _, val := range map[string]yaml.Node(root.(yaml.Map)) {
+	case map[string]Node:
+		for _, val := range root.(map[string]Node) {
 			err := CheckResolved(val)
 			if err != nil {
 				return err
 			}
 		}
 
-	case yaml.List:
-		for _, val := range []yaml.Node(root.(yaml.List)) {
+	case []Node:
+		for _, val := range root.([]Node) {
 			err := CheckResolved(val)
 			if err != nil {
 				return err
 			}
 		}
-
-	case yaml.Scalar:
 
 	case *PoshNode:
 		posh := root.(*PoshNode)
 
 		return errors.New(fmt.Sprintf("could not resolve: %#v\n", posh.Expression))
 
+	case string:
+
 	default:
-		panic("unknown node type")
+		return errors.New(fmt.Sprintf("unknown node type: %#v\n", root))
 	}
 
 	return nil
 }
 
-func (s *Spice) flow(root yaml.Node, path []string, context []yaml.Map) (yaml.Node, bool) {
+func (s *Spice) flow(root Node, path []string, context Context) (Node, bool) {
 	switch root.(type) {
-	case yaml.Map:
-		return s.flowMap(root.(yaml.Map), path, context)
+	case map[string]Node:
+		return s.flowMap(root.(map[string]Node), path, context)
 
-	case yaml.List:
-		return s.flowList(root.(yaml.List), path, context)
+	case []Node:
+		return s.flowList(root.([]Node), path, context)
 
-	case yaml.Scalar:
-		return s.flowScalar(root.(yaml.Scalar), path, context)
+	case string:
+		return s.flowScalar(root.(string), path, context)
 
 	case *PoshNode:
 		posh := root.(*PoshNode)
@@ -89,17 +89,20 @@ func (s *Spice) flow(root yaml.Node, path []string, context []yaml.Map) (yaml.No
 
 		return posh, false
 
+	case int, bool:
+		return root, false
+
 	default:
-		panic("unknown node type")
+		panic(fmt.Sprintf("unknown node type during flow: %#v\n", root))
 	}
 }
 
-func (s *Spice) flowMap(root yaml.Map, path []string, context []yaml.Map) (yaml.Node, bool) {
-	newMap := make(map[string]yaml.Node)
+func (s *Spice) flowMap(root map[string]Node, path []string, context Context) (Node, bool) {
+	newMap := make(map[string]Node)
 
 	didFlow := false
 
-	for key, val := range map[string]yaml.Node(root) {
+	for key, val := range root {
 		flowedVal, didFlowVal := s.flow(val, append(path, key), append(context, root))
 		newMap[key] = flowedVal
 
@@ -108,24 +111,24 @@ func (s *Spice) flowMap(root yaml.Map, path []string, context []yaml.Map) (yaml.
 		}
 	}
 
-	return yaml.Map(newMap), didFlow
+	return Node(newMap), didFlow
 }
 
-func (s *Spice) flowList(root yaml.List, path []string, context []yaml.Map) (yaml.Node, bool) {
-	newList := []yaml.Node{}
+func (s *Spice) flowList(root []Node, path []string, context Context) (Node, bool) {
+	newList := []Node{}
 
 	didFlow := false
 
-	for _, val := range []yaml.Node(root) {
+	for _, val := range root {
 		entryPath := path
 
 		switch val.(type) {
-		case yaml.Map:
-			nameNode := val.(yaml.Map).Key("name")
-			name, ok := nameNode.(yaml.Scalar)
+		case map[string]Node:
+			nameNode := val.(map[string]Node)["name"]
 
-			if ok && pathName.MatchString(string(name)) {
-				entryPath = append(path, string(name))
+			name, ok := nameNode.(string)
+			if ok && pathName.MatchString(name) {
+				entryPath = append(path, name)
 			}
 		}
 
@@ -137,11 +140,11 @@ func (s *Spice) flowList(root yaml.List, path []string, context []yaml.Map) (yam
 		newList = append(newList, flowedVal)
 	}
 
-	return yaml.List(newList), didFlow
+	return Node(newList), didFlow
 }
 
-func (s *Spice) flowScalar(root yaml.Scalar, path []string, context []yaml.Map) (yaml.Node, bool) {
-	sub := embeddedPosh.FindStringSubmatch(string(root))
+func (s *Spice) flowScalar(root string, path []string, context Context) (Node, bool) {
+	sub := embeddedPosh.FindStringSubmatch(root)
 	if sub == nil {
 		return root, false
 	}
@@ -195,7 +198,7 @@ func (s *ExprStack) PopSeq() *SeqExpr {
 	return seq
 }
 
-func compileTokens(posh *Posh, path []string, context []yaml.Map) yaml.Node {
+func compileTokens(posh *Posh, path []string, context Context) Node {
 	exprStack := &ExprStack{}
 
 	afterComma := false

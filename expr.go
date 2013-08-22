@@ -3,12 +3,10 @@ package posh
 import (
 	"fmt"
 	"strconv"
-
-	"github.com/kylelemons/go-gypsy/yaml"
 )
 
 type Expression interface {
-	Evaluate(context []yaml.Map, stub yaml.Node) yaml.Node
+	Evaluate(context Context, stub Node) Node
 }
 
 type AutoExpr struct {
@@ -72,43 +70,51 @@ type CallExpr struct {
 	Arguments []Expression
 }
 
-func (e *AutoExpr) Evaluate(context []yaml.Map, stub yaml.Node) yaml.Node {
+func (e *AutoExpr) Evaluate(context Context, stub Node) Node {
 	if len(e.Path) == 3 && e.Path[0] == "resource_pools" && e.Path[2] == "size" {
 		size := 0
 
-		jobs, found := resolveSymbol("jobs", context...)
+		jobs, found := resolveSymbol("jobs", context)
 		if !found {
 			return nil
 		}
 
-		jobsList, ok := jobs.(yaml.List)
+		jobsList, ok := jobs.([]Node)
 		if !ok {
 			return nil
 		}
 
-		for _, job := range []yaml.Node(jobsList) {
-			attrs, ok := job.(yaml.Map)
+		for _, job := range []Node(jobsList) {
+			attrs, ok := job.(map[string]Node)
 			if !ok {
 				continue
 			}
 
-			resourcePool := attrs.Key("resource_pool")
-			poolName, ok := resourcePool.(yaml.Scalar)
+			resourcePool, ok := attrs["resource_pool"]
 			if !ok {
 				continue
 			}
 
-			if string(poolName) != e.Path[1] {
+			poolName, ok := scalarFrom(resourcePool)
+			if !ok {
 				continue
 			}
 
-			instances := attrs.Key("instances")
-			instanceCount, ok := instances.(yaml.Scalar)
+			if poolName != e.Path[1] {
+				continue
+			}
+
+			instances, ok := attrs["instances"]
 			if !ok {
 				return nil
 			}
 
-			count, err := strconv.Atoi(string(instanceCount))
+			instanceCount, ok := scalarFrom(instances)
+			if !ok {
+				return nil
+			}
+
+			count, err := strconv.Atoi(instanceCount)
 			if err != nil {
 				return nil
 			}
@@ -116,38 +122,38 @@ func (e *AutoExpr) Evaluate(context []yaml.Map, stub yaml.Node) yaml.Node {
 			size += count
 		}
 
-		return yaml.Scalar(fmt.Sprintf("%d", size))
+		return Node(fmt.Sprintf("%d", size))
 	}
 
 	return nil
 }
 
-func (e *MergeExpr) Evaluate(context []yaml.Map, stub yaml.Node) yaml.Node {
+func (e *MergeExpr) Evaluate(context Context, stub Node) Node {
 	return findInPath(e.Path, stub)
 }
 
-func (e *ReferenceExpr) Evaluate(context []yaml.Map, stub yaml.Node) yaml.Node {
-	root, found := resolveSymbol(e.Path[0], context...)
+func (e *ReferenceExpr) Evaluate(context Context, stub Node) Node {
+	root, found := resolveSymbol(e.Path[0], context)
 	if !found {
-		return yaml.Scalar("TODO: reference not found: " + e.Path[0])
+		return Node("TODO: reference not found: " + e.Path[0])
 	}
 
 	return findInPath(e.Path[1:], root)
 }
 
-func (e *BooleanExpr) Evaluate([]yaml.Map, yaml.Node) yaml.Node {
-	return yaml.Scalar(fmt.Sprintf("%v", e.Value))
+func (e *BooleanExpr) Evaluate(Context, Node) Node {
+	return Node(fmt.Sprintf("%v", e.Value))
 }
 
-func (e *IntegerExpr) Evaluate([]yaml.Map, yaml.Node) yaml.Node {
-	return yaml.Scalar(fmt.Sprintf("%d", e.Value))
+func (e *IntegerExpr) Evaluate(Context, Node) Node {
+	return Node(fmt.Sprintf("%d", e.Value))
 }
 
-func (e *StringExpr) Evaluate([]yaml.Map, yaml.Node) yaml.Node {
-	return yaml.Scalar(e.Value)
+func (e *StringExpr) Evaluate(Context, Node) Node {
+	return Node(e.Value)
 }
 
-func (e *OrExpr) Evaluate(context []yaml.Map, stub yaml.Node) yaml.Node {
+func (e *OrExpr) Evaluate(context Context, stub Node) Node {
 	a := e.A.Evaluate(context, stub)
 	if a != nil {
 		return a
@@ -156,7 +162,7 @@ func (e *OrExpr) Evaluate(context []yaml.Map, stub yaml.Node) yaml.Node {
 	return e.B.Evaluate(context, stub)
 }
 
-func (e *ConcatenationExpr) Evaluate(context []yaml.Map, stub yaml.Node) yaml.Node {
+func (e *ConcatenationExpr) Evaluate(context Context, stub Node) Node {
 	a := e.A.Evaluate(context, stub)
 	b := e.B.Evaluate(context, stub)
 
@@ -170,37 +176,10 @@ func (e *ConcatenationExpr) Evaluate(context []yaml.Map, stub yaml.Node) yaml.No
 		return nil
 	}
 
-	return yaml.Scalar(string(ascalar) + string(bscalar))
+	return Node(ascalar + bscalar)
 }
 
-func (e *AdditionExpr) Evaluate(context []yaml.Map, stub yaml.Node) yaml.Node {
-	a := e.A.Evaluate(context, stub)
-	b := e.B.Evaluate(context, stub)
-
-	ascalar, ok := scalarFrom(a)
-	if !ok {
-		return nil
-	}
-
-	bscalar, ok := scalarFrom(b)
-	if !ok {
-		return nil
-	}
-
-	aint, err := strconv.Atoi(string(ascalar))
-	if err != nil {
-		return nil
-	}
-
-	bint, err := strconv.Atoi(string(bscalar))
-	if err != nil {
-		return nil
-	}
-
-	return yaml.Scalar(fmt.Sprintf("%d", aint+bint))
-}
-
-func (e *SubtractionExpr) Evaluate(context []yaml.Map, stub yaml.Node) yaml.Node {
+func (e *AdditionExpr) Evaluate(context Context, stub Node) Node {
 	a := e.A.Evaluate(context, stub)
 	b := e.B.Evaluate(context, stub)
 
@@ -224,43 +203,70 @@ func (e *SubtractionExpr) Evaluate(context []yaml.Map, stub yaml.Node) yaml.Node
 		return nil
 	}
 
-	return yaml.Scalar(fmt.Sprintf("%d", aint-bint))
+	return Node(fmt.Sprintf("%d", aint+bint))
 }
 
-func (e *SeqExpr) Evaluate([]yaml.Map, yaml.Node) yaml.Node {
-	return yaml.Scalar("TODO Seq")
+func (e *SubtractionExpr) Evaluate(context Context, stub Node) Node {
+	a := e.A.Evaluate(context, stub)
+	b := e.B.Evaluate(context, stub)
+
+	ascalar, ok := scalarFrom(a)
+	if !ok {
+		return nil
+	}
+
+	bscalar, ok := scalarFrom(b)
+	if !ok {
+		return nil
+	}
+
+	aint, err := strconv.Atoi(string(ascalar))
+	if err != nil {
+		return nil
+	}
+
+	bint, err := strconv.Atoi(string(bscalar))
+	if err != nil {
+		return nil
+	}
+
+	return Node(fmt.Sprintf("%d", aint-bint))
 }
 
-func (e *FunctionExpr) Evaluate([]yaml.Map, yaml.Node) yaml.Node {
-	return yaml.Scalar("TODO Function")
+func (e *SeqExpr) Evaluate(Context, Node) Node {
+	return Node("TODO Seq")
 }
 
-func (e *CallExpr) Evaluate([]yaml.Map, yaml.Node) yaml.Node {
-	return yaml.Scalar("TODO Call")
+func (e *FunctionExpr) Evaluate(Context, Node) Node {
+	return Node("TODO Function")
 }
 
-func (e *ListExpr) Evaluate(context []yaml.Map, stub yaml.Node) yaml.Node {
-	var nodes []yaml.Node
+func (e *CallExpr) Evaluate(Context, Node) Node {
+	return Node("TODO Call")
+}
+
+func (e *ListExpr) Evaluate(context Context, stub Node) Node {
+	var nodes []Node
 
 	for _, sub := range e.Contents {
 		nodes = append(nodes, sub.Evaluate(context, stub))
 	}
 
-	return yaml.List(nodes)
+	return Node(nodes)
 }
 
-func scalarFrom(node yaml.Node) (yaml.Scalar, bool) {
+func scalarFrom(node Node) (string, bool) {
 	switch node.(type) {
-	case yaml.Scalar:
-		return node.(yaml.Scalar), true
+	case string:
+		return node.(string), true
 	case *PoshNode:
 		return scalarFrom(node.(*PoshNode).Node)
 	default:
-		return yaml.Scalar(""), false
+		return "", false
 	}
 }
 
-func findInPath(path []string, root yaml.Node) yaml.Node {
+func findInPath(path []string, root Node) Node {
 	here := root
 
 	for _, step := range path {
@@ -279,21 +285,21 @@ func findInPath(path []string, root yaml.Node) yaml.Node {
 	return here
 }
 
-func nextStep(step string, here yaml.Node) (yaml.Node, bool) {
+func nextStep(step string, here Node) (Node, bool) {
 	found := false
 	switch here.(type) {
-	case yaml.Map:
+	case map[string]Node:
 		found = true
-		here = here.(yaml.Map).Key(step)
-	case yaml.List:
-		for _, val := range []yaml.Node(here.(yaml.List)) {
+		here = here.(map[string]Node)[step]
+	case []Node:
+		for _, val := range here.([]Node) {
 			switch val.(type) {
-			case yaml.Map:
-				name := val.(yaml.Map).Key("name")
+			case map[string]Node:
+				name := val.(map[string]Node)["name"]
 
 				switch name.(type) {
-				case yaml.Scalar:
-					if string(name.(yaml.Scalar)) == step {
+				case string:
+					if name.(string) == step {
 						found = true
 						here = val
 					}
@@ -306,16 +312,16 @@ func nextStep(step string, here yaml.Node) (yaml.Node, bool) {
 	}
 
 	if !found {
-		// fmt.Printf("failed on step %#v in %#v\n", step, here)
+		fmt.Printf("failed on step %#v in %#v\n", step, here)
 		return nil, false
 	}
 
 	return here, true
 }
 
-func resolveSymbol(name string, context ...yaml.Map) (yaml.Node, bool) {
+func resolveSymbol(name string, context Context) (Node, bool) {
 	for _, ctx := range context {
-		val := ctx.Key(name)
+		val := ctx[name]
 		if val != nil {
 			return val, true
 		}

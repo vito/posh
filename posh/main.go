@@ -3,9 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 
-	"github.com/kylelemons/go-gypsy/yaml"
+	"launchpad.net/goyaml"
 
 	"github.com/vito/posh"
 )
@@ -16,19 +17,31 @@ var stubFile = flag.String("stub", "", "path to stub .yml file")
 func main() {
 	flag.Parse()
 
-	templateFile, err := yaml.ReadFile(*templateFile)
+	var templateYAML, stubYAML interface{}
+
+	templateFile, err := ioutil.ReadFile(*templateFile)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalln("error reading template:", err)
 	}
 
-	stubFile, err := yaml.ReadFile(*stubFile)
+	stubFile, err := ioutil.ReadFile(*stubFile)
 	if err != nil {
-		log.Fatalln(err)
+		log.Fatalln("error reading stub:", err)
 	}
 
-	spice := &posh.Spice{Stub: stubFile.Root}
+	err = goyaml.Unmarshal(templateFile, &templateYAML)
+	if err != nil {
+		log.Fatalln("error parsing template:", err)
+	}
 
-	flowed := templateFile.Root
+	err = goyaml.Unmarshal(stubFile, &stubYAML)
+	if err != nil {
+		log.Fatalln("error parsing stub:", err)
+	}
+
+	spice := &posh.Spice{Stub: posh.Sanitize(stubYAML)}
+
+	flowed := posh.Sanitize(templateYAML)
 
 	for didFlow := true; didFlow; flowed, didFlow = spice.Flow(flowed) {
 	}
@@ -38,5 +51,10 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	fmt.Println(yaml.Render(flowed))
+	rendered, err := goyaml.Marshal(flowed)
+	if err != nil {
+		log.Fatalln("failed to render manifest:", err)
+	}
+
+	fmt.Printf("%s", rendered)
 }
