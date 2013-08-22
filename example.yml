@@ -11,9 +11,7 @@ ec2_constants:
 name: (( merge ))
 director_uuid: (( merge ))
 
-releases:
-  - name: (( merge || release.name ))
-    version: latest
+releases: (( merge ))
 
 compilation:
   workers: 6

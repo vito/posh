@@ -135,7 +135,7 @@ func (e *MergeExpr) Evaluate(context Context, stub Node) Node {
 func (e *ReferenceExpr) Evaluate(context Context, stub Node) Node {
 	root, found := resolveSymbol(e.Path[0], context)
 	if !found {
-		return Node("TODO: reference not found: " + e.Path[0])
+		return nil
 	}
 
 	return findInPath(e.Path[1:], root)
