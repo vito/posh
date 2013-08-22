@@ -55,7 +55,7 @@ func CheckResolved(root Node) error {
 
 		return errors.New(fmt.Sprintf("could not resolve: %#v\n", posh.Expression))
 
-	case string:
+	case string, int, bool:
 
 	default:
 		return errors.New(fmt.Sprintf("unknown node type: %#v\n", root))

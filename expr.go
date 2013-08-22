@@ -1,10 +1,5 @@
 package posh
 
-import (
-	"fmt"
-	"strconv"
-)
-
 type Expression interface {
 	Evaluate(context Context, stub Node) Node
 }
@@ -95,7 +90,7 @@ func (e *AutoExpr) Evaluate(context Context, stub Node) Node {
 				continue
 			}
 
-			poolName, ok := scalarFrom(resourcePool)
+			poolName, ok := stringFrom(resourcePool)
 			if !ok {
 				continue
 			}
@@ -109,20 +104,15 @@ func (e *AutoExpr) Evaluate(context Context, stub Node) Node {
 				return nil
 			}
 
-			instanceCount, ok := scalarFrom(instances)
+			instanceCount, ok := intFrom(instances)
 			if !ok {
 				return nil
 			}
 
-			count, err := strconv.Atoi(instanceCount)
-			if err != nil {
-				return nil
-			}
-
-			size += count
+			size += instanceCount
 		}
 
-		return Node(fmt.Sprintf("%d", size))
+		return Node(size)
 	}
 
 	return nil
@@ -142,11 +132,11 @@ func (e *ReferenceExpr) Evaluate(context Context, stub Node) Node {
 }
 
 func (e *BooleanExpr) Evaluate(Context, Node) Node {
-	return Node(fmt.Sprintf("%v", e.Value))
+	return Node(e.Value)
 }
 
 func (e *IntegerExpr) Evaluate(Context, Node) Node {
-	return Node(fmt.Sprintf("%d", e.Value))
+	return Node(e.Value)
 }
 
 func (e *StringExpr) Evaluate(Context, Node) Node {
@@ -166,71 +156,51 @@ func (e *ConcatenationExpr) Evaluate(context Context, stub Node) Node {
 	a := e.A.Evaluate(context, stub)
 	b := e.B.Evaluate(context, stub)
 
-	ascalar, ok := scalarFrom(a)
+	astring, ok := stringFrom(a)
 	if !ok {
 		return nil
 	}
 
-	bscalar, ok := scalarFrom(b)
+	bstring, ok := stringFrom(b)
 	if !ok {
 		return nil
 	}
 
-	return Node(ascalar + bscalar)
+	return Node(astring + bstring)
 }
 
 func (e *AdditionExpr) Evaluate(context Context, stub Node) Node {
 	a := e.A.Evaluate(context, stub)
 	b := e.B.Evaluate(context, stub)
 
-	ascalar, ok := scalarFrom(a)
+	aint, ok := intFrom(a)
 	if !ok {
 		return nil
 	}
 
-	bscalar, ok := scalarFrom(b)
+	bint, ok := intFrom(b)
 	if !ok {
 		return nil
 	}
 
-	aint, err := strconv.Atoi(string(ascalar))
-	if err != nil {
-		return nil
-	}
-
-	bint, err := strconv.Atoi(string(bscalar))
-	if err != nil {
-		return nil
-	}
-
-	return Node(fmt.Sprintf("%d", aint+bint))
+	return Node(aint + bint)
 }
 
 func (e *SubtractionExpr) Evaluate(context Context, stub Node) Node {
 	a := e.A.Evaluate(context, stub)
 	b := e.B.Evaluate(context, stub)
 
-	ascalar, ok := scalarFrom(a)
+	aint, ok := intFrom(a)
 	if !ok {
 		return nil
 	}
 
-	bscalar, ok := scalarFrom(b)
+	bint, ok := intFrom(b)
 	if !ok {
 		return nil
 	}
 
-	aint, err := strconv.Atoi(string(ascalar))
-	if err != nil {
-		return nil
-	}
-
-	bint, err := strconv.Atoi(string(bscalar))
-	if err != nil {
-		return nil
-	}
-
-	return Node(fmt.Sprintf("%d", aint-bint))
+	return Node(aint - bint)
 }
 
 func (e *SeqExpr) Evaluate(Context, Node) Node {
@@ -255,14 +225,25 @@ func (e *ListExpr) Evaluate(context Context, stub Node) Node {
 	return Node(nodes)
 }
 
-func scalarFrom(node Node) (string, bool) {
+func stringFrom(node Node) (string, bool) {
 	switch node.(type) {
 	case string:
 		return node.(string), true
 	case *PoshNode:
-		return scalarFrom(node.(*PoshNode).Node)
+		return stringFrom(node.(*PoshNode).Node)
 	default:
 		return "", false
+	}
+}
+
+func intFrom(node Node) (int, bool) {
+	switch node.(type) {
+	case int:
+		return node.(int), true
+	case *PoshNode:
+		return intFrom(node.(*PoshNode).Node)
+	default:
+		return 0, false
 	}
 }
 
@@ -312,7 +293,6 @@ func nextStep(step string, here Node) (Node, bool) {
 	}
 
 	if !found {
-		fmt.Printf("failed on step %#v in %#v\n", step, here)
 		return nil, false
 	}
 

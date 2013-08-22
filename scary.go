@@ -37,9 +37,11 @@ func Sanitize(root interface{}) Node {
 	case []byte:
 		return Node(string(root.([]byte)))
 
-	// TODO
-	case int, bool:
-		return Node(fmt.Sprintf("%v", root))
+	case int:
+		return Node(root.(int))
+
+	case bool:
+		return Node(root.(bool))
 
 	default:
 		panic(fmt.Sprintf("unknown type during sanitization: %#v\n", root))
