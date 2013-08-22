@@ -426,6 +426,6 @@ properties:
 
   collector:
     use_datadog: true
-    datadog_api_key: (( properties.template_only.datadog.datadog_api_key ))
-    datadog_application_key: (( properties.template_only.datadog.datadog_application_key ))
+    datadog_api_key: (( template_only.datadog.datadog_api_key ))
+    datadog_application_key: (( template_only.datadog.datadog_application_key ))
     deployment_name: (( name ))
